@@ -6,7 +6,10 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.Scanner;
 
 public class TaskManager {
@@ -14,74 +17,67 @@ public class TaskManager {
     static String[][] tasks;
     public static void main(String[] args) {
         tasks = load();
-        options();
-    }
-
-    private static void options() {
-        String[] options = {"add", "remove", "list", "exit"};
         Scanner scr = new Scanner(System.in);
-        while (true) {
+        boolean exit = true;
+        while (exit) {
             System.out.println(ConsoleColors.BLUE + ("Please select an option:" + ConsoleColors.RESET));
-            for (String o: options) {
-                System.out.println(o);
-            }
-            String check = scr.next();
-            if (check.equals("add")) {
-                add();
-            } else if (check.equals("remove")) {
-                remove();
-            } else if (check.equals("list")) {
-                list();
-            } else if (check.equals("exit")) {
-                exit();
-                System.out.println(ConsoleColors.RED + "The program has finished its work.");
-                break;
-            } else {
-                System.out.println("Wrong commend. Try again");
+            System.out.println("add\n" + "remove\n" + "list \n" + "exit");
+
+            String check = scr.nextLine();
+            switch (check) {
+                case "add" -> add();
+                case "remove" -> remove();
+                case "list" -> list();
+                case "exit" -> {
+                    exit();
+                    exit = false;
+                    System.out.println(ConsoleColors.RED + "The program has finished its work.");
+                }
+                default -> System.out.println("Wrong command. Try again");
             }
         }
     }
+
     public static String[][] load() {
-        int recordsNumber = 0;
         Path path = Path.of("tasks.csv");
         String[][] tasksArray = new String[0][0];
         try {
             for (String task: Files.readAllLines(path)) {
-                recordsNumber++;
-            }
-            tasksArray = new String[recordsNumber][3];
-            int counter = 0;
-            for (String task: Files.readAllLines(path)) {
-                    for (int j = 0; j < 3; j++) {
-                        tasksArray[counter][j] = task.split(",")[j];
-                }
-                counter++;
+                tasksArray = ArrayUtils.add(tasksArray, task.split(","));
             }
         } catch (IOException e) {
-            System.out.println("Plik z listą zadań najwyraźniej został usunięty lub jest problem z dostępem do niego");
+            System.out.println("File with list of tasks is probably deleted or program doesn't have access to it");
         }
         return tasksArray;
     }
     public static void list() {
 
         for (int i = 0; i < tasks.length; i++) {
-            for (int j = 0; j < tasks[i].length; j++) {
-                System.out.print(i + " : " + tasks[i][j] + " ");
-            }
-            System.out.println();
+            System.out.println(i + " : " + String.join(" ", tasks[i]));
         }
     }
     public static void add() {
         Scanner scr = new Scanner(System.in);
         System.out.println("Please add task description");
         String description = scr.nextLine();
-        System.out.println("Please add task due date in format 'rrrr-mm-dd'");
-        String date = " " + scr.nextLine();
+        System.out.println("Please add task due date in format 'yyyy-mm-dd'");
+        String dateStr;
+        while (true) {
+            dateStr = scr.nextLine();
+            try {
+                SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");
+                Date date = format.parse(dateStr);
+                if (dateStr.equals(format.format(date))) {
+                    break;
+                }
+            } catch (ParseException | IllegalArgumentException e) {}
+            System.out.println("Wrong argument. Please add task due date in format 'yyyy-mm-dd'");
+        }
         System.out.println("Is your task important? (true/false)");
         String importance;
         while (true) {
-            importance = " " + scr.nextLine();
-            if (importance.equals(" true") || importance.equals(" false")){
+            importance = scr.nextLine();
+            if (importance.equalsIgnoreCase("true") || importance.equalsIgnoreCase("false")){
                 break;
             } else {
                 System.out.println("Please type true or false");
@@ -90,9 +86,8 @@ public class TaskManager {
         tasks = Arrays.copyOf(tasks, tasks.length+1);
         tasks[tasks.length-1] = new String[3];
         tasks[tasks.length-1][0] = description;
-        tasks[tasks.length-1][1] = date;
+        tasks[tasks.length-1][1] = dateStr;
         tasks[tasks.length-1][2] = importance;
-        scr.close();
         System.out.println("Record was successfully added");
     }
     public static void remove() {
@@ -116,11 +111,11 @@ public class TaskManager {
     }
     public static void exit() {
         try (FileWriter writer = new FileWriter("tasks.csv")) {
-            for (int i = 0; i < tasks.length; i++) {
-                writer.append(String.join(",", tasks[i])+"\n");
+            for (String[] task : tasks) {
+                writer.append(String.join(",", task) + "\n");
             }
         } catch (IOException e) {
-            System.out.println("Wystąpił problem z dostępem do pliku tasks.csv");
+            System.out.println("There is a problem with access to file tasks.csv");
         }
     }
 
